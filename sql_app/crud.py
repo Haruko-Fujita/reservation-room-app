@@ -1,9 +1,11 @@
-# DBのCRUD操作を関数化、再利用できるようにする
-# sqlAlchemyを使っているため、SQL文ではなくpythonで書ける
+
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.functions import mode
 from . import models, schemas
 from fastapi import HTTPException
+
+# DBのCRUD操作を関数化、再利用できるようにする
+# sqlAlchemyを使っているため、SQL文ではなくpythonで書ける
 
 # ユーザー一覧取得
 def get_users(db: Session, skip: int = 0, limit: int = 100):

@@ -1,9 +1,9 @@
-# DB側の型定義（モデル/データ構造）
 from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.sql.functions import user
 from sqlalchemy.sql.sqltypes import Date
 from .database import Base
 
+# DB側の型定義（モデル/データ構造）
 
 class User(Base):
     __tablename__ = "users"
