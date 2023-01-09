@@ -11,7 +11,7 @@ from fastapi import HTTPException
 def get_users(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.User).offset(skip).limit(limit).all()
     # db.query(models.User).all() でもok
-    # queryでDBを検索する
+    # queryでDBを検索、データを取得する
 
 
 # 会議室一覧取得
@@ -40,13 +40,20 @@ def create_room(db: Session, room: schemas.Room):
 
 # 予約登録
 def create_booking(db: Session, booking: schemas.Booking):
-    # db_booked = db.query(models.Booking).\
-    #     filter(models.Booking.room_id == booking.room_id).\
-    #     filter(models.Booking.end_datetime > booking.start_datetime).\
-    #     filter(models.Booking.start_datetime < booking.end_datetime).\
-    #     all()
-    # # 重複するデータがなければ
-    # if len(db_booked) == 0:
+    # バリデーションチェック
+    # queryでDBから予約済みデータ(models.Booking)をリスト型(.all())で取得
+    # POSTパラメータ(booking)と重複するデータをfilter
+    db_booked = db.query(models.Booking).\
+        filter(models.Booking.room_id == booking.room_id).\
+        filter(models.Booking.end_datetime > booking.start_datetime).\
+        filter(models.Booking.start_datetime < booking.end_datetime).\
+        all()
+        # room_idが一致
+        # 予約済み終了時間 > POST_param 開始時間
+        # 予約済み開始時間 < POST_param 終了時間
+
+    # 重複するデータがなければデータを追加
+    if len(db_booked) == 0:
         db_booking = models.Booking(
             user_id = booking.user_id,
             room_id = booking.room_id,
@@ -58,9 +65,5 @@ def create_booking(db: Session, booking: schemas.Booking):
         db.commit()
         db.refresh(db_booking)
         return db_booking
-    # else:
-    #     raise HTTPException(status_code=404, detail="Already booked")
-
-
-
-
+    else:
+        raise HTTPException(status_code=404, detail="Already booked") # FastAPIでerrorレスポンス

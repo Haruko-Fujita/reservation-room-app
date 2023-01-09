@@ -5,13 +5,12 @@ from sqlalchemy.orm import Session
 from . import crud, models, schemas
 from .database import SessionLocal, engine
 
-# FastAPI
+# FastAPI（API）
 
 models.Base.metadata.create_all(bind=engine)
 # modelsファイルからBaseを読み込み、DB engineを元にDBエンジンを作成
 
 app = FastAPI()  # インスタンス化
-
 
 def get_db():
     db = SessionLocal()  # session（DB接続の一連の流れ）を読み込む

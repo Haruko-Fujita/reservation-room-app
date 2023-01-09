@@ -12,7 +12,7 @@ if page == "bookings":
 
     # ユーザー一覧取得
     url_users = "http://127.0.0.1:8000/users"
-    res = requests.get(url_users) # ユーザー一覧GET API呼び出し
+    res = requests.get(url_users)  # ユーザー一覧GET API呼び出し
     users = res.json()  # [0:{"user_name":"user1" "user_id":1} 1:{}...]
     # st.json(users) # test
 
@@ -22,10 +22,9 @@ if page == "bookings":
         users_name_dict[user["user_name"]] = user["user_id"]
     # st.write(users_name_dict) # test
 
-
     # 会議室一覧取得
     url_rooms = "http://127.0.0.1:8000/rooms"
-    res = requests.get(url_rooms) # 会議室一覧GET API呼び出し
+    res = requests.get(url_rooms)  # 会議室一覧GET API呼び出し
     rooms = res.json()  # [0:{"room_name":"room1" "room_id":1} 1:{}...]
     # st.json(rooms)  # test
 
@@ -39,16 +38,15 @@ if page == "bookings":
     # st.write(rooms_name_dict) # test
 
     st.write("### 会議室一覧")
-    df_rooms = pd.DataFrame(rooms) # json型からデータフレーム型に変換
-    df_rooms.columns = ["会議室名", "定員", "会議室ID"] # カラム名(room_name/capacity/id)表記を変更
-    st.table(df_rooms) # 表で表示
-
+    df_rooms = pd.DataFrame(rooms)  # json型からデータフレーム型に変換
+    df_rooms.columns = ["会議室名", "定員", "会議室ID"]  # カラム名(room_name/capacity/id)表記を変更
+    st.table(df_rooms)  # 表で表示
 
     # 予約一覧を表示
     url_bookings = "http://127.0.0.1:8000/bookings"
-    res = requests.get(url_bookings) # 予約一覧GET API呼び出し
+    res = requests.get(url_bookings)  # 予約一覧GET API呼び出し
     bookings = res.json()
-    df_bookings = pd.DataFrame(bookings) # json型からデータフレーム型に変換
+    df_bookings = pd.DataFrame(bookings)  # json型からデータフレーム型に変換
 
     # user_idをkey、user_nameをvalueのdict型 {"1":{"user_name": "user1"}...}
     users_id_dict = {}
@@ -91,12 +89,9 @@ if page == "bookings":
     )
 
     st.write("### 予約一覧")
-    st.table(df_bookings) # 表で表示
+    st.table(df_bookings)  # 表で表示
 
-
-
-
-    with st.form(key="booking"):
+    with st.form(key="booking"):  # formの表示
         user_name: str = st.selectbox("予約者名", users_name_dict.keys())
         room_name: str = st.selectbox("会議室名", rooms_name_dict.keys())
         # booking_id: int = random.randint(0, 10)
@@ -108,11 +103,14 @@ if page == "bookings":
 
         submit_button = st.form_submit_button(label="登録")
 
-    if submit_button:
+    if submit_button:  # ボタンを押下したら動く
+
+        # 会議室と予約者の名前から各id/capacityを取得
         user_id: int = users_name_dict[user_name]
         room_id: int = rooms_name_dict[room_name]["room_id"]
         capacity: int = rooms_name_dict[room_name]["capacity"]
 
+        # POST APIに渡すパラメータをセット
         data = {
             # "booking_id": booking_id,
             "user_id": user_id,
@@ -134,18 +132,33 @@ if page == "bookings":
             ).isoformat(),
         }
 
-        # 定員より多い予約人数の場合
+        # バリデーションチェック
+        # 予約人数が定員より多い
         if booked_num > capacity:
             st.error(f"{room_name}の定員は、{capacity}名です。{capacity}名以下の予約人数のみ受け付けております。")
-        # 予約人数が定員以下の場合、会議室予約
-        if booked_num <= capacity:
-            url = "http://127.0.0.1:8000/bookings"
-            res = requests.post(url, data=json.dumps(data))
+        # 開始時刻 >= 終了時刻
+        elif start_time >= end_time:
+            st.error("開始時刻が終了時刻を越えています")
+        # start_time < 9:00 or end_time > 20:00
+        elif start_time < datetime.time(
+            hour=9, minute=0, second=0
+        ) or end_time > datetime.time(hour=20, minute=0, second=0):
+            st.error("利用時間は9:00~20:00になります。")
 
+        # 会議室予約
+        else:
+            url = "http://127.0.0.1:8000/bookings"
+            res = requests.post(url, data=json.dumps(data))  # 予約POST API呼び出し
             if res.status_code == 200:
                 st.success("予約完了しました")
-                st.write(res.status_code)
-                st.json(res.json())
+
+            # else: # test
+            # st.write(res.status_code)  # test 404
+            # st.json(res.json())  # test {"detail":"Already booked"}
+
+            # crud(API通過後、DB登録直前)で予約重複チェックした結果
+            elif res.status_code == 404 and res.json()["detail"] == "Already booked":
+                st.error("指定の時間にはすでに予約が入っています。")
 
 
 elif page == "users":
@@ -176,15 +189,15 @@ elif page == "users":
 elif page == "rooms":
     st.title("会議室登録")
 
-    with st.form(key="room"):
+    with st.form(key="room"):  # formの表示
         room_name: str = st.text_input("room名", max_chars=12)
-        capacity: int = st.number_input("定員", step=1)  # step=1刻み
+        capacity: int = st.number_input("定員", step=1, min_value=1)  # step=1刻み
         data = {"room_name": room_name, "capacity": capacity}
         submit_button = st.form_submit_button(label="登録")
 
-    if submit_button:
+    if submit_button:  # ボタン押下で動く
         url = "http://127.0.0.1:8000/rooms"
-        res = requests.post(url, data=json.dumps(data))
+        res = requests.post(url, data=json.dumps(data))  # room POST API呼び出し
         if res.status_code == 200:
             st.success("登録完了")
             st.json(res.json())
